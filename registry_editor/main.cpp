@@ -5,7 +5,7 @@
 #include <array>
 #include "raii.hpp"
 
-// this is one of the worst applications I have ever written in my life
+// this is one of the worst applications I have ever written in my life, atleast it's modern.
 
 #define out( text, ... ) std::printf( text, ##__VA_ARGS__ )
 
