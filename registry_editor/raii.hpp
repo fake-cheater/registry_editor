@@ -9,5 +9,5 @@ namespace raii {
 		}
 	};
 
-	using hkey = std::unique_ptr< std::remove_pointer_t<HKEY> >;
+	using hkey = std::unique_ptr< std::remove_pointer_t<HKEY>, registry_deleter >;
 }
