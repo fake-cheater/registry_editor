@@ -3,4 +3,4 @@ this is a tool I made in about 30 minutes that spoofs all the registry keys that
 
 this doesn't unban you, you still have to spoof your hwid from the kernel!
 
-compile in x64 release, run elevated
+compile using msvc w/ x64 release, run elevated
