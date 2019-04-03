@@ -196,7 +196,7 @@ int main( ) {
 		}
 
 		for ( auto idx = 0; idx < string_array.size( ); idx++ ) {
-			set_status = RegSetValueExA( nt_key.get( ), string_array[ idx ], NULL, REG_DWORD, ( std::uint8_t* )randomized_string.c_str( ), sizeof( DWORD ) );
+			set_status = RegSetValueExA( nt_key.get( ), string_array[ idx ], NULL, REG_DWORD, ( std::uint8_t* )randomized_string.c_str( ), string_length );
 
 			if ( set_status == ERROR_SUCCESS )
 				out( "[+] set %s to: %s\n", string_array[ idx ], randomized_string.c_str( ) );
