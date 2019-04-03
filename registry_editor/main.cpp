@@ -22,7 +22,7 @@ int main( ) {
 	static constexpr std::size_t string_length = 16;
 	static const auto start_time = std::chrono::system_clock::now( ).time_since_epoch( );
 
-	auto spoof_key = [ ] ( HKEY current_key, std::vector<const char*> sub_keys, std::uint8_t data_type ) {
+	auto spoof_key = [ & ] ( HKEY current_key, std::vector<const char*> sub_keys, std::uint8_t data_type ) {
 		DWORD randomized_dword = 0;
 		std::string randomized_string;
 
