@@ -13,7 +13,6 @@ char random_char( ) {
 	std::random_device random_device;
 	std::mt19937 mersenne_generator( random_device( ) );
 	std::uniform_int_distribution<> distribution( 97, 122 );
-
 	return static_cast< unsigned char >( distribution( mersenne_generator ) );
 }
 
@@ -22,6 +21,32 @@ int main( ) {
 
 	static constexpr std::size_t string_length = 16;
 	static const auto start_time = std::chrono::system_clock::now( ).time_since_epoch( );
+
+	auto spoof_key = [ ] ( HKEY current_key, std::vector<const char*> sub_keys, std::uint8_t data_type ) {
+		DWORD randomized_dword = 0;
+		std::string randomized_string;
+
+		if ( data_type == 1 ) {
+			randomized_string.reserve( string_length );
+			std::generate_n( std::back_inserter( randomized_string ), string_length, random_char );
+		} else if ( data_type == 2 ) {
+			std::random_device random_device;
+			std::mt19937 mersenne_generator( random_device( ) );
+			std::uniform_int_distribution<> distribution( 0, MAXUINT32 );
+			randomized_dword = static_cast< DWORD >( distribution( mersenne_generator ) );
+		}
+
+		auto set_status = ERROR_SUCCESS;
+
+		for ( const auto current : sub_keys ) {
+			( data_type == 1 ) ? set_status = RegSetValueExA( current_key, current, 0, REG_SZ, ( std::uint8_t* )randomized_string.c_str( ), string_length ) : set_status = RegSetValueExA( current_key, current, 0, REG_DWORD, ( std::uint8_t* )&randomized_dword, sizeof( DWORD ) );
+
+			if ( set_status == ERROR_SUCCESS )
+				( data_type == 1 ) ? out( "[+] set %s to: %s\n", current, randomized_string.c_str( ) ) : out( "[+] set %s to: %i\n", current, randomized_dword );
+			else
+				out( "[-] failed to set %s\n", current );
+		}
+	};
 
 	HKEY output = nullptr;
 	auto open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "System\\CurrentControlSet\\Control", 0, KEY_ALL_ACCESS, &output );
@@ -35,22 +60,8 @@ int main( ) {
 
 	raii::hkey control_key( output ); 
 	{
-		std::string randomized_string;
-		randomized_string.resize( string_length );
-		std::generate_n( randomized_string.begin( ), string_length, random_char );
-
-		std::array sub_keys{ "SystemInformation", "ComputerHardwareId" };
-
-		auto set_status = ERROR_SUCCESS;
-
-		for ( auto idx = 0; idx < sub_keys.size( ); idx++ ) {
-			set_status = RegSetValueExA( control_key.get( ), sub_keys[ idx ], 0, REG_SZ, ( std::uint8_t* )randomized_string.c_str( ), string_length );
-
-			if ( set_status == ERROR_SUCCESS )
-				out( "[+] set %s to: %s\n", sub_keys[ idx ], randomized_string.c_str( ) );
-			else
-				out( "[-] failed to set %s\n", sub_keys[ idx ] );
-		}
+		std::vector<const char*> sub_keys{ "SystemInformation", "ComputerHardwareId" };
+		spoof_key( control_key.get( ), sub_keys, 1 );
 	}
 
 	output = nullptr;
@@ -65,22 +76,8 @@ int main( ) {
 
 	raii::hkey bios_key( output ); 
 	{
-		std::string randomized_string;
-		randomized_string.resize( string_length );
-		std::generate_n( randomized_string.begin( ), string_length, random_char );
-
-		std::array sub_keys{ "BIOSVendor", "BIOSReleaseDate", "SystemManufacturer", "SystemProductName" };
-
-		auto set_status = ERROR_SUCCESS;
-
-		for ( auto idx = 0; idx < sub_keys.size( ); idx++ ) {
-			set_status = RegSetValueExA( bios_key.get( ), sub_keys[ idx ], 0, REG_SZ, ( std::uint8_t* )randomized_string.c_str( ), string_length );
-
-			if ( set_status == ERROR_SUCCESS )
-				out( "[+] set %s to: %s\n", sub_keys[ idx ], randomized_string.c_str( ) );
-			else
-				out( "[-] failed to set %s\n", sub_keys[ idx ] );
-		}
+		std::vector<const char*> sub_keys{ "BIOSVendor", "BIOSReleaseDate", "SystemManufacturer", "SystemProductName" };
+		spoof_key( bios_key.get( ), sub_keys, 1 );
 	}
 
 	output = nullptr;
@@ -95,22 +92,8 @@ int main( ) {
 
 	raii::hkey scsi_key( output ); 
 	{
-		std::string randomized_string;
-		randomized_string.resize( string_length );
-		std::generate_n( randomized_string.begin( ), string_length, random_char );
-
-		std::array sub_keys{ "Identifier", "SerialNumber" };
-
-		auto set_status = ERROR_SUCCESS;
-
-		for ( auto idx = 0; idx < sub_keys.size( ); idx++ ) {
-			set_status = RegSetValueExA( scsi_key.get( ), sub_keys[ idx ], 0, REG_SZ, ( std::uint8_t* )randomized_string.c_str( ), string_length );
-
-			if ( set_status == ERROR_SUCCESS )
-				out( "[+] set %s to: %s\n", sub_keys[ idx ], randomized_string.c_str( ) );
-			else
-				out( "[-] failed to set %s\n", sub_keys[ idx ] );
-		}
+		std::vector<const char*> sub_keys{ "Identifier", "SerialNumber" };
+		spoof_key( scsi_key.get( ), sub_keys, 1 );
 	}
 
 	output = nullptr;
@@ -125,16 +108,7 @@ int main( ) {
 
 	raii::hkey cpu_key( output ); 
 	{
-		std::string randomized_string;
-		randomized_string.resize( string_length );
-		std::generate_n( randomized_string.begin( ), string_length, random_char );
-
-		auto set_status = RegSetValueExA( cpu_key.get( ), "ProcessorNameString", 0, REG_SZ, ( std::uint8_t* )randomized_string.c_str( ), string_length );
-
-		if ( set_status == ERROR_SUCCESS )
-			out( "[+] set ProcessorNameString to: %s\n", randomized_string.c_str( ) );
-		else
-			out( "[-] failed to set ProcessorNameString\n" );
+		spoof_key( scsi_key.get( ), std::vector<const char*>{ "ProcessorNameString" }, 1 );
 	}
 
 	output = nullptr;
@@ -149,18 +123,7 @@ int main( ) {
 
 	raii::hkey desc_key( output ); 
 	{
-		std::random_device random_device;
-		std::mt19937 mersenne_generator( random_device( ) );
-		std::uniform_int_distribution<> distribution( 0, MAXUINT32 );
-
-		DWORD randomized_nr = static_cast< DWORD >( distribution( mersenne_generator ) );
-
-		auto set_status = RegSetValueExA( desc_key.get( ), "DriverDesc", 0, REG_DWORD, ( std::uint8_t* )&randomized_nr, sizeof( DWORD ) );
-
-		if ( set_status == ERROR_SUCCESS )
-			out( "[+] set DriverDesc to: %i\n", randomized_nr );
-		else
-			out( "[-] failed to set DriverDesc\n" );
+		spoof_key( desc_key.get( ), std::vector<const char*>{ "DriverDesc" }, 2 );
 	}
 
 	output = nullptr;
@@ -173,26 +136,10 @@ int main( ) {
 		return EXIT_FAILURE;
 	}
 
-	raii::hkey nt_key( output ); 
+	raii::hkey nt_key( output );
 	{
-		std::random_device random_device;
-		std::mt19937 mersenne_generator( random_device( ) );
-		std::uniform_int_distribution<> distribution( 0, MAXUINT32 );
-
-		DWORD randomized_nr = static_cast< DWORD >( distribution( mersenne_generator ) );
-
-		std::array sub_keys{ "InstallDate", "InstallTime", "BuildGUID", "ProductID" };
-
-		auto set_status = ERROR_SUCCESS;
-
-		for ( auto idx = 0; idx < sub_keys.size( ); idx++ ) {
-			set_status = RegSetValueExA( nt_key.get( ), sub_keys[ idx ], 0, REG_DWORD, ( std::uint8_t* )&randomized_nr, sizeof( DWORD ) );
-
-			if ( set_status == ERROR_SUCCESS )
-				out( "[+] set %s to: %i\n", sub_keys[idx], randomized_nr );
-			else
-				out( "[-] failed to set %s\n", sub_keys[idx] );
-		}
+		std::vector<const char*> sub_keys{ "InstallDate", "InstallTime", "BuildGUID", "ProductID" };
+		spoof_key( nt_key.get( ), sub_keys, 2 );
 	}
 
 	auto elapsed_time = std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now( ).time_since_epoch( ) - start_time ).count( );
