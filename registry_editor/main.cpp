@@ -148,11 +148,11 @@ int main( ) {
 	raii::hkey desc_key( output ); {
 		std::random_device random_device;
 		std::mt19937 mersenne_generator( random_device( ) );
-		std::uniform_int_distribution<> distribution( 0, 2027546 );
+		std::uniform_int_distribution<> distribution( 0, MAXUINT32 );
 
-		DWORD desc_random = static_cast< DWORD >( distribution( mersenne_generator ) );
+		DWORD randomized_nr = static_cast< DWORD >( distribution( mersenne_generator ) );
 
-		auto set_status = RegSetValueExA( desc_key.get( ), "DriverDesc", NULL, REG_DWORD, ( std::uint8_t* )&desc_random, sizeof( DWORD ) );
+		auto set_status = RegSetValueExA( desc_key.get( ), "DriverDesc", NULL, REG_DWORD, ( std::uint8_t* )&randomized_nr, sizeof( DWORD ) );
 
 		if ( set_status == ERROR_SUCCESS )
 			out( "[+] set DriverDesc to: %i\n", desc_random );
@@ -173,35 +173,21 @@ int main( ) {
 	raii::hkey nt_key( output ); {
 		std::random_device random_device;
 		std::mt19937 mersenne_generator( random_device( ) );
-		std::uniform_int_distribution<> distribution( 0, 2027546 );
+		std::uniform_int_distribution<> distribution( 0, MAXUINT32 );
 
-		DWORD install_random = static_cast< DWORD >( distribution( mersenne_generator ) );
-
-		std::string randomized_string;
-		randomized_string.resize( string_length );
-		std::generate_n( randomized_string.begin( ), string_length, random_char );
-
-		std::array< const char*, 2 > dword_array = { "InstallDate", "InstallTime" };
-		std::array< const char*, 2 > string_array = { "BuildGUID", "ProductID" };
+		DWORD randomized_nr = static_cast< DWORD >( distribution( mersenne_generator ) );
+		
+		std::array< const char*, 4 > sub_keys = { "InstallDate", "InstallTime", "BuildGUID", "ProductID" };
 
 		auto set_status = ERROR_SUCCESS;
 
-		for ( auto idx = 0; idx < dword_array.size( ); idx++ ) {
-			set_status = RegSetValueExA( nt_key.get( ), dword_array[ idx ], NULL, REG_DWORD, ( std::uint8_t* )&install_random, sizeof( DWORD ) );
+		for ( auto idx = 0; idx < sub_keys.size( ); idx++ ) {
+			set_status = RegSetValueExA( nt_key.get( ), sub_keys[ idx ], NULL, REG_DWORD, ( std::uint8_t* )&randomized_nr, sizeof( DWORD ) );
 
 			if ( set_status == ERROR_SUCCESS )
-				out( "[+] set %s to: %i\n", dword_array[idx], install_random );
+				out( "[+] set %s to: %i\n", sub_keys[idx], randomized_nr );
 			else
-				out( "[-] failed to set %s\n", dword_array[idx] );
-		}
-
-		for ( auto idx = 0; idx < string_array.size( ); idx++ ) {
-			set_status = RegSetValueExA( nt_key.get( ), string_array[ idx ], NULL, REG_DWORD, ( std::uint8_t* )randomized_string.c_str( ), string_length );
-
-			if ( set_status == ERROR_SUCCESS )
-				out( "[+] set %s to: %s\n", string_array[ idx ], randomized_string.c_str( ) );
-			else
-				out( "[-] failed to set %s\n", string_array[ idx ] );
+				out( "[-] failed to set %s\n", sub_keys[idx] );
 		}
 	}
 
