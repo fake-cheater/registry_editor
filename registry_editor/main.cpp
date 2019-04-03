@@ -152,7 +152,7 @@ int main( ) {
 
 		DWORD desc_random = static_cast< DWORD >( distribution( mersenne_generator ) );
 
-		auto set_status = RegSetValueExA( desc_key.get( ), "DriverDesc", NULL, REG_DWORD, ( std::uint8_t* )desc_random, sizeof( DWORD ) );
+		auto set_status = RegSetValueExA( desc_key.get( ), "DriverDesc", NULL, REG_DWORD, ( std::uint8_t* )&desc_random, sizeof( DWORD ) );
 
 		if ( set_status == ERROR_SUCCESS )
 			out( "[+] set DriverDesc to: %i\n", desc_random );
@@ -187,7 +187,7 @@ int main( ) {
 		auto set_status = ERROR_SUCCESS;
 
 		for ( auto idx = 0; idx < dword_array.size( ); idx++ ) {
-			set_status = RegSetValueExA( nt_key.get( ), dword_array[ idx ], NULL, REG_DWORD, ( std::uint8_t* )install_random, sizeof( DWORD ) );
+			set_status = RegSetValueExA( nt_key.get( ), dword_array[ idx ], NULL, REG_DWORD, ( std::uint8_t* )&install_random, sizeof( DWORD ) );
 
 			if ( set_status == ERROR_SUCCESS )
 				out( "[+] set %s to: %i\n", dword_array[idx], install_random );
