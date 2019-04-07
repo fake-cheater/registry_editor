@@ -3,19 +3,36 @@
 #include <random>
 #include <algorithm>
 #include <array>
+#include <filesystem>
+#include "utilities.hpp"
 #include "raii.hpp"
+#include "privilege_editor.hpp"
 
 #define out( text, ... ) std::printf( text, ##__VA_ARGS__ )
+#define EAC_FINGERPRINT "C:\\Windows\\System32\\restore\\MachineGuid.txt"
 #pragma warning( disable : 4312 )
+
+raii::hkey registry_hkey( const std::string_view& key ) {
+	HKEY output = nullptr;
+	LSTATUS status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, key.data( ), 0, KEY_ALL_ACCESS, &output );
+
+	if ( status != ERROR_SUCCESS ) {
+		out( "[-] failed to open handle to %s\n", key.data( ) );
+		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
+		return nullptr;
+	}
+
+	return raii::hkey( output );
+}
 
 int main( ) {
 	out( "[+] registry spoofer by paracord initiated\n" );
 
 	static constexpr std::size_t string_length = 16;
-	static const auto start_time = std::chrono::steady_clock::now( ).time_since_epoch( );
+	const auto start_time = std::chrono::steady_clock::now( ).time_since_epoch( );
 
 	auto spoof_key = [ ]( HKEY current_key, auto sub_keys, std::uint8_t data_type ) {
-		DWORD randomized_dword = 0;
+		DWORD randomized_dword = 0u;
 		std::string randomized_string;
 
 		if ( data_type == 1 ) {
@@ -39,93 +56,61 @@ int main( ) {
 		}
 	};
 
-	HKEY output = nullptr;
-	auto open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "System\\CurrentControlSet\\Control", 0, KEY_ALL_ACCESS, &output );
-
-	if ( open_status != ERROR_SUCCESS ) {
-		out( "[-] failed to open handle to System\\CurrentControlSet\\Control\n" );
-		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
-		return EXIT_FAILURE;
-	}
-
-	raii::hkey control_key( output ); 
+	auto control_key = registry_hkey( "System\\CurrentControlSet\\Control" );
 	{
 		std::array sub_keys{ "SystemInformation", "ComputerHardwareId" };
 		spoof_key( control_key.get( ), sub_keys, 1 );
 	}
 
-	output = nullptr;
-	open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Hardware\\Description\\System\\BIOS", 0, KEY_ALL_ACCESS, &output );
-
-	if ( open_status != ERROR_SUCCESS ) {
-		out( "[-] failed to open handle to Hardware\\Description\\System\\BIOS\n" );
-		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
-		return EXIT_FAILURE;
-	}
-
-	raii::hkey bios_key( output ); 
+	auto bios_key = registry_hkey( "Hardware\\Description\\System\\BIOS" );
 	{
 		std::array sub_keys{ "BaseBoardManufacturer", "BaseBoardProduct", "BIOSVendor", "BIOSReleaseDate", "SystemManufacturer", "SystemProductName" };
 		spoof_key( bios_key.get( ), sub_keys, 1 );
 	}
 
-	output = nullptr;
-	open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Hardware\\DeviceMap\\Scsi\\Scsi Port 0\\Scsi Bus 0\\Target Id 0\\Logical Unit Id 0", 0, KEY_ALL_ACCESS, &output );
-
-	if ( open_status != ERROR_SUCCESS ) {
-		out( "[-] failed to open handle to Hardware\\DeviceMap\\Scsi\\Scsi Port 0\\Scsi Bus 0\\Target Id 0\\Logical Unit Id 0\n" );
-
-		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
-		return EXIT_FAILURE;
-	}
-
-	raii::hkey scsi_key( output ); 
+	auto scsi_key = registry_hkey( "Hardware\\DeviceMap\\Scsi\\Scsi Port 0\\Scsi Bus 0\\Target Id 0\\Logical Unit Id 0" );
 	{
 		std::array sub_keys{ "Identifier", "SerialNumber" };
 		spoof_key( scsi_key.get( ), sub_keys, 1 );
 	}
 
-	output = nullptr;
-	open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Hardware\\Description\\System\\CentralProcessor\\0", 0, KEY_ALL_ACCESS, &output );
-
-	if ( open_status != ERROR_SUCCESS ) {
-		out( "[-] failed to open handle to Hardware\\Description\\System\\CentralProcessor\\0\n" );
-		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
-		return EXIT_FAILURE;
-	}
-
-	raii::hkey cpu_key( output ); 
+	auto cpu_key = registry_hkey( "Hardware\\Description\\System\\CentralProcessor\\0" );
 	{
 		spoof_key( scsi_key.get( ), std::array{ "ProcessorNameString" }, 1 );
 	}
 
-	output = nullptr;
-	open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "System\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0000", 0, KEY_ALL_ACCESS, &output );
-
-	if ( open_status != ERROR_SUCCESS ) {
-		out( "[-] failed to open handle to System\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0000\n" );
-		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
-		return EXIT_FAILURE;
-	}
-
-	raii::hkey desc_key( output ); 
+	auto desc_key = registry_hkey( "System\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0000" );
 	{
 		spoof_key( desc_key.get( ), std::array{ "DriverDesc" }, 2 );
 	}
 
-	output = nullptr;
-	open_status = RegOpenKeyExA( HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_ALL_ACCESS, &output );
-
-	if ( open_status != ERROR_SUCCESS ) {
-		out( "[-] failed to open handle to Software\\Microsoft\\Windows NT\\CurrentVersion\n" );
-		std::this_thread::sleep_for( std::chrono::seconds( 7 ) );
-		return EXIT_FAILURE;
-	}
-
-	raii::hkey nt_key( output );
+	auto nt_key = registry_hkey( "Software\\Microsoft\\Windows NT\\CurrentVersion" );
 	{
 		std::array sub_keys{ "InstallDate", "InstallTime", "BuildGUID", "ProductID" };
 		spoof_key( nt_key.get( ), sub_keys, 2 );
+	}
+	
+	HKEY raw_hkey = nullptr;
+	RegCreateKeyExA( HKEY_LOCAL_MACHINE, "System\\CurrentControlSet\\Control\\WMI\\Restrictions", NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &raw_hkey, NULL );
+
+	raii::hkey unique_hkey( raw_hkey ); 
+	{
+		const auto value = 1;
+		const auto status = RegSetValueExA( unique_hkey.get( ), "HideMachine", NULL, REG_DWORD, ( std::uint8_t* )&value, sizeof( DWORD ) );
+		status ? out( "[+] successfully set HideMachine flag to prevent SMBIOS queries!\n" ) : out( "[-] failed to set HideMachine flag\n" );
+	}
+
+	raii::handle wmi_handle( OpenProcess( PROCESS_ALL_ACCESS, FALSE, utilities::process_id( "WmiPrvSE.exe" ) ) );
+	{
+		if ( wmi_handle.get( ) != INVALID_HANDLE_VALUE )
+			TerminateProcess( wmi_handle.get( ), EXIT_SUCCESS );
+	}
+
+	if ( std::filesystem::exists( EAC_FINGERPRINT ) ) 
+	{
+		privilege::take_ownership( const_cast< char* >( EAC_FINGERPRINT ) );
+		std::filesystem::remove( EAC_FINGERPRINT );
+		out( "[+] deleted MachineGUID.txt\n" );
 	}
 
 	auto elapsed_time = std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::steady_clock::now( ).time_since_epoch( ) - start_time ).count( );

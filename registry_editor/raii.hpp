@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <memory>
+#include <cstdio>
 
 namespace raii {
 	struct registry_deleter {
@@ -8,6 +9,13 @@ namespace raii {
 			RegCloseKey( key );
 		}
 	};
+	
+	struct handle_deleter {
+		const void operator( )( void * key ) noexcept {
+			CloseHandle( key );
+		}
+	};
 
 	using hkey = std::unique_ptr<std::remove_pointer_t<HKEY>, registry_deleter>;
+	using handle = std::unique_ptr<void, handle_deleter>;
 }
