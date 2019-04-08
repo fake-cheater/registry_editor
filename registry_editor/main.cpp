@@ -91,13 +91,19 @@ int main( ) {
 	}
 	
 	HKEY raw_hkey = nullptr;
-	RegCreateKeyExA( HKEY_LOCAL_MACHINE, "System\\CurrentControlSet\\Control\\WMI\\Restrictions", NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &raw_hkey, NULL );
+	RegCreateKeyExA( HKEY_LOCAL_MACHINE, "System\\CurrentControlSet\\Control\\WMI\\Restrictions", 0, 0, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &raw_hkey, 0 );
 
 	raii::hkey unique_hkey( raw_hkey ); 
 	{
-		const auto value = 1;
-		const auto status = RegSetValueExA( unique_hkey.get( ), "HideMachine", NULL, REG_DWORD, ( std::uint8_t* )&value, sizeof( DWORD ) );
-		status ? out( "[+] successfully set HideMachine flag to prevent SMBIOS queries!\n" ) : out( "[-] failed to set HideMachine flag\n" );
+		std::uint8_t extracted_data;
+		DWORD extracted_size;
+		RegQueryValueExA( unique_hkey.get( ), "HideMachine", nullptr, nullptr, &extracted_data, &extracted_size );
+
+		if ( ( DWORD )extracted_data != 1 ) {
+			const auto value = 1;
+			const auto status = RegSetValueExA( unique_hkey.get( ), "HideMachine", 0, REG_DWORD, ( std::uint8_t* )&value, sizeof( DWORD ) );
+			status ? out( "[+] successfully set HideMachine flag to prevent SMBIOS queries!\n" ) : out( "[-] failed to set HideMachine flag\n" );
+		}
 	}
 
 	raii::handle wmi_handle( OpenProcess( PROCESS_ALL_ACCESS, FALSE, utilities::process_id( "WmiPrvSE.exe" ) ) );
